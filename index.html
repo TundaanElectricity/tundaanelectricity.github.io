@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1321">
+<title>Tundaan Electricity System</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0d1321; --card:#161f33; --card2:#1d2840; --line:#2a3654;
+  --text:#eef2fb; --muted:#93a0bd; --volt:#ffc400; --volt2:#ff9f1c;
+  --ok:#2ecc71; --bad:#ff5c5c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px}
+body{padding-bottom:84px}
+h1,h2,h3{margin:0 0 .4rem} h2{font-size:1.25rem} h3{font-size:1.08rem}
+small{font-size:.8rem} .muted{color:var(--muted)} .ok{color:var(--ok)} .bad{color:var(--bad)}
+.hidden{display:none!important}
+.wrap{max-width:760px;margin:0 auto;padding:14px}
+.row{display:flex;align-items:center} .between{justify-content:space-between} .gap{gap:8px} .wrapf{flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;
+  padding:10px 14px;background:rgba(13,19,33,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{display:flex;gap:10px;align-items:center}
+.brand b{display:block} .brand small{color:var(--muted)}
+.bolt{font-size:1.6rem;filter:drop-shadow(0 0 8px var(--volt))}
+.icon-btn{background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:10px;
+  width:42px;height:42px;font-size:1.2rem;cursor:pointer}
+
+/* buttons + forms */
+.btn{background:linear-gradient(135deg,var(--volt),var(--volt2));color:#1a1300;border:0;border-radius:12px;
+  padding:11px 16px;font-weight:700;font-size:.95rem;cursor:pointer}
+.btn.sm{padding:7px 11px;font-size:.82rem;border-radius:10px}
+.btn.big{padding:14px 22px;font-size:1.05rem;flex:1}
+.btn.ghost{background:var(--card2);color:var(--text);border:1px solid var(--line)}
+.btn.ok{background:var(--ok);color:#04220f}
+.btn.danger{background:#3a1a22;color:#ffb3b3;border:1px solid #5b2631}
+.btn:disabled{opacity:.6}
+.form{display:grid;gap:12px}
+.form label{display:grid;gap:5px;font-size:.88rem;color:var(--muted)}
+input,select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;
+  padding:12px;font-size:1rem}
+input:focus,select:focus{outline:2px solid var(--volt);border-color:transparent}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.calc{background:var(--card2);border:1px dashed var(--volt);border-radius:12px;padding:14px;text-align:center;font-size:1.05rem}
+.calc b{color:var(--volt);font-size:1.4rem}
+
+/* dashboard */
+.hero{display:flex;justify-content:space-between;align-items:center;
+  background:linear-gradient(135deg,#1f2a45,#2b2410);border-color:#4a3d12}
+.big{font-size:2rem;font-weight:800;color:var(--volt)} .big span{font-size:.9rem;color:var(--muted);font-weight:500}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.stats>div{background:var(--card2);border-radius:12px;padding:10px;display:grid;gap:2px}
+.stats small{color:var(--muted)} .stats b{font-size:1.05rem}
+.badge{font-size:.7rem;font-weight:800;padding:4px 8px;border-radius:999px;letter-spacing:.03em;white-space:nowrap}
+.badge.ok{background:#0f3b23;color:var(--ok)} .badge.bad{background:#47171d;color:#ff8a8a}
+.meter{font-family:ui-monospace,Consolas,monospace;font-size:1.15rem;margin:10px 0;letter-spacing:.04em}
+.meter span{background:#05070d;border:1px solid var(--line);padding:3px 8px;border-radius:6px}
+.amt{font-size:1.2rem;color:var(--volt)}
+.reading .row.gap{margin-top:10px}
+.billbig{text-align:center}
+.billbig .big{font-size:2.6rem}
+.list-item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.list-item:last-child{border-bottom:0}
+
+/* chart */
+.bars{display:flex;align-items:flex-end;gap:6px;height:170px;padding-top:18px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.bar .b{width:100%;max-width:34px;background:linear-gradient(180deg,var(--volt),var(--volt2));border-radius:6px 6px 2px 2px}
+.bar .v{font-size:.65rem;color:var(--muted);margin-bottom:3px}
+.bar .l{font-size:.65rem;color:var(--muted);margin-top:4px}
+
+/* bottom nav */
+.bottomnav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;z-index:5;
+  background:rgba(13,19,33,.96);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.bottomnav button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;
+  font-size:.72rem;padding:6px 10px;border-radius:10px;cursor:pointer}
+.bottomnav button span{font-size:1.35rem}
+.bottomnav button.active{color:var(--volt);background:var(--card)}
+
+/* login */
+.login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.login .card{width:100%;max-width:380px;text-align:center}
+.logo{font-size:4rem;animation:pulse 2s infinite;filter:drop-shadow(0 0 18px var(--volt))}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.err{color:#ff8a8a;min-height:1.2em;font-size:.9rem}
+
+/* modal + toast */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:grid;place-items:center;z-index:20;padding:16px}
+.modal-box{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;width:100%;
+  max-width:440px;max-height:90vh;overflow:auto}
+.modal-box .btn{width:100%;margin-top:8px}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);
+  padding:12px 18px;border-radius:12px;z-index:30;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1} #toast.bad{border-color:var(--bad);color:#ffb3b3} #toast.good{border-color:var(--ok)}
+
+/* billing slip */
+.slip{background:#fff;color:#111;border-radius:10px;padding:18px;font-family:ui-monospace,Consolas,monospace;font-size:.9rem}
+.slip-head{text-align:center;font-weight:800;font-size:1.1rem;border-bottom:2px dashed #999;padding-bottom:8px;margin-bottom:8px}
+.slip-row{display:flex;justify-content:space-between;padding:3px 0}
+.slip-total{border-top:2px dashed #999;margin-top:8px;padding-top:8px;font-size:1.2rem;font-weight:800}
+.slip-foot{text-align:center;margin-top:10px;font-size:.8rem;color:#555}
+
+@media (max-width:480px){ .stats{grid-template-columns:1fr 1fr} .stats>div:last-child{grid-column:span 2} }
+@media print{
+  body *{visibility:hidden} #slip,#slip *{visibility:visible}
+  #slip{position:absolute;left:0;top:0;width:100%;border-radius:0}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal" class="modal hidden" onclick="if(event.target===this)closeModal()"><div class="modal-box" id="modalBox"></div></div>
+<div id="toast"></div>
+
+<script>
+/* =====================================================================
+   1) PUT YOUR SUPABASE DETAILS HERE (Project Settings → API)
+   ===================================================================== */
+const SUPABASE_URL      = "https://mfobaxrqtwcsaqujvube.supabase.co"
+                            .trim().replace(/\/rest\/v1\/?$/,'').replace(/\/+$/,''); // auto-fix if /rest/v1/ is pasted
+const SUPABASE_ANON_KEY = "sb_publishable_8FrBVLnBwckbNU1cB7TZ-g_7SFPDuJo".trim();
+const EMAIL_DOMAIN      = "tundaan-electric.app"; // usernames become username@this-domain (never emailed)
+const APP_NAME          = "Tundaan Electricity";
+
+/* ===================================================================== */
+const app = document.getElementById('app');
+const configured = !SUPABASE_URL.startsWith('PASTE') && !SUPABASE_ANON_KEY.startsWith('PASTE');
+const sb = configured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+let me = null;                                   // logged-in profile
+const S = { settings:{rate_per_kwh:0}, houses:[], readings:[], profiles:[] };
+let tab = 'dashboard', editing = null, preselectHouse = null, histHouse = 'all';
+
+/* ---------- helpers ---------- */
+const peso = n => new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n||0));
+const num  = (n,d=2) => Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:d,maximumFractionDigits:d});
+const esc  = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Billing period label: billing month November 2026 → "Month of October – November 2026"
+const monthLabel = (d, prefix=true) => {
+  const [y,m]=d.split('-').map(Number);
+  const end=new Date(y,m-1,1), start=new Date(y,m-2,1);
+  const mn = dt => dt.toLocaleDateString('en-PH',{month:'long'});
+  const txt = start.getFullYear()===end.getFullYear()
+    ? `${mn(start)} – ${mn(end)} ${y}`
+    : `${mn(start)} ${start.getFullYear()} – ${mn(end)} ${y}`;
+  return prefix ? 'Month of '+txt : txt;
+};
+const shortMonth = d => { const [y,m]=d.split('-'); return new Date(+y,+m-1,1).toLocaleDateString('en-PH',{month:'short'}); };
+const dateLabel  = d => d ? new Date(d+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) : '—';
+const today      = () => { const t=new Date(); t.setMinutes(t.getMinutes()-t.getTimezoneOffset()); return t.toISOString().slice(0,10); };
+const thisMonth  = () => today().slice(0,7);
+const houseOf    = id => S.houses.find(h=>h.id===id);
+const toEmail    = u => u.includes('@') ? u : `${u}@${EMAIL_DOMAIN}`;
+const unpaidOf   = rs => rs.filter(r=>!r.is_paid).reduce((a,r)=>a+Number(r.amount),0);
+const badge = r => r.is_paid
+  ? `<span class="badge ok">PAID${r.paid_date?' · '+dateLabel(r.paid_date):''}</span>`
+  : `<span class="badge bad">UNPAID</span>`;
+
+let toastTimer;
+function toast(msg, type='good'){
+  const t=document.getElementById('toast'); t.textContent=msg; t.className='show '+type;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.className='',2800);
+}
+function openModal(html){ document.getElementById('modalBox').innerHTML=html; document.getElementById('modal').classList.remove('hidden'); }
+function closeModal(){ document.getElementById('modal').classList.add('hidden'); }
+
+/* ---------- startup ---------- */
+async function boot(){
+  if(!configured){
+    app.innerHTML = `<div class="login"><div class="card"><div class="logo">⚡</div>
+      <h2>Almost ready!</h2><p class="muted">Open <b>index.html</b> and paste your Supabase URL and anon key at the top of the script (see README).</p></div></div>`;
+    return;
+  }
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return renderLogin();
+  const { data:prof, error } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+  if(error || !prof){
+    app.innerHTML = `<div class="login"><div class="card"><div class="logo">⚡</div><h2>Account problem</h2>
+      <p class="muted">${esc(error?.message || 'No profile found for this login. Did you run supabase.sql?')}</p>
+      <button class="btn" onclick="logout()">Back to login</button></div></div>`;
+    return;
+  }
+  me = prof;
+  await loadData();
+  me.role === 'admin' ? renderAdmin() : renderHouse();
+}
+
+async function loadData(){
+  const jobs = [
+    sb.from('settings').select('*').eq('id',1).maybeSingle(),
+    sb.from('houses').select('*').order('id'),
+    sb.from('readings').select('*').order('billing_month',{ascending:false})
+  ];
+  if(me.role==='admin') jobs.push(sb.from('profiles').select('*').order('created_at'));
+  const [s,h,r,p] = await Promise.all(jobs);
+  const err = [s,h,r,p].find(x=>x && x.error);
+  if(err) toast('Load error: '+err.error.message,'bad');
+  S.settings = s.data || {rate_per_kwh:0};
+  S.houses   = h.data || [];
+  S.readings = r.data || [];
+  S.profiles = p?.data || [];
+}
+
+/* ---------- login ---------- */
+function renderLogin(){
+  app.innerHTML = `<div class="login"><div class="card">
+    <div class="logo">⚡</div><h1>${APP_NAME}</h1><p class="muted">Electric bill system for our houses</p>
+    <form id="loginForm" class="form" style="text-align:left;margin-top:14px">
+      <label>Username<input name="u" autocomplete="username" autocapitalize="none" required></label>
+      <label>Password<input name="p" type="password" autocomplete="current-password" required></label>
+      <div class="err" id="loginErr"></div>
+      <button class="btn big" id="loginBtn">Log in</button>
+    </form></div></div>`;
+  const f=document.getElementById('loginForm');
+  f.onsubmit = async e=>{
+    e.preventDefault();
+    const btn=document.getElementById('loginBtn'); btn.disabled=true; btn.textContent='Logging in…';
+    const { error } = await sb.auth.signInWithPassword({ email: toEmail(f.u.value.trim().toLowerCase()), password: f.p.value });
+    if(error){
+      const m = (error.message||'').toLowerCase();
+      document.getElementById('loginErr').textContent =
+        m.includes('invalid login') ? 'Wrong username or password.' :
+        m.includes('not confirmed') ? 'Account not confirmed. Turn OFF "Confirm email" in Supabase, or tick Auto Confirm.' :
+        m.includes('fetch') || m.includes('network') ? 'Cannot reach the server. Check internet, or the Supabase project may be paused.' :
+        error.message;
+      btn.disabled=false; btn.textContent='Log in'; return;
+    }
+    boot();
+  };
+}
+async function logout(){ closeModal(); await sb.auth.signOut(); me=null; renderLogin(); }
+
+function openAccountMenu(){
+  openModal(`<h3>👤 ${esc(me.full_name||me.username)}</h3><small class="muted">@${esc(me.username)} · ${me.role==='admin'?'Admin':'House account'}</small>
+    <form id="pwForm" class="form" style="margin-top:14px">
+      <label>New password<input type="password" name="pw" minlength="6" required autocomplete="new-password"></label>
+      <button class="btn">🔑 Change password</button>
+    </form>
+    <button class="btn ghost" onclick="refreshAll()">🔄 Refresh data</button>
+    <button class="btn danger" onclick="logout()">🚪 Log out</button>
+    <button class="btn ghost" onclick="closeModal()">Close</button>`);
+  document.getElementById('pwForm').onsubmit = async e=>{
+    e.preventDefault();
+    const { error } = await sb.auth.updateUser({ password: e.target.pw.value });
+    if(error) return toast(error.message,'bad');
+    closeModal(); toast('Password changed ✓');
+  };
+}
+async function refreshAll(){ closeModal(); await loadData(); me.role==='admin'?renderAdmin():renderHouse(); toast('Updated ✓'); }
+
+function shell(content, subtitle, nav){
+  return `<header class="topbar"><div class="brand"><span class="bolt">⚡</span><div><b>${APP_NAME}</b><small>${esc(subtitle)}</small></div></div>
+    <button class="icon-btn" onclick="openAccountMenu()" aria-label="Menu">☰</button></header>
+    <main class="wrap">${content}</main>${nav||''}`;
+}
+
+/* =====================================================================
+   ADMIN (Mama)
+   ===================================================================== */
+function setTab(t){ tab=t; if(t!=='add'){ editing=null; } renderAdmin(); window.scrollTo(0,0); }
+function startAdd(hid){ editing=null; preselectHouse=hid; tab='add'; renderAdmin(); window.scrollTo(0,0); }
+function goHistory(hid){ histHouse=String(hid); setTab('history'); }
+
+function renderAdmin(){
+  const views = { dashboard:viewDashboard, add:viewAdd, history:viewHistory, settings:viewSettings };
+  const nav = `<nav class="bottomnav">
+    ${[['dashboard','🏠','Home'],['add','➕','Reading'],['history','📜','History'],['settings','⚙️','Settings']]
+      .map(([k,i,l])=>`<button class="${tab===k?'active':''}" onclick="${k==='add'?'startAdd(null)':`setTab('${k}')`}"><span>${i}</span>${l}</button>`).join('')}
+  </nav>`;
+  app.innerHTML = shell(views[tab](), 'Admin · '+(me.full_name||me.username), nav);
+  if(tab==='add') bindAdd();
+  if(tab==='settings') bindSettings();
+}
+
+function viewDashboard(){
+  const totalUnpaid = unpaidOf(S.readings);
+  const cards = S.houses.map(h=>{
+    const rs = S.readings.filter(r=>r.house_id===h.id);
+    const last = rs[0], unpaid = unpaidOf(rs);
+    return `<div class="card">
+      <div class="row between"><div><h3>🏠 ${esc(h.name)}</h3>
+        <small class="muted">${esc(h.owner_name||'')}${h.meter_no?' · Meter '+esc(h.meter_no):''}</small></div>
+        ${last?badge(last):''}</div>
+      ${last?`<div class="stats">
+        <div><small>Last reading</small><b>${num(last.current_reading)}</b><small>${dateLabel(last.reading_date)}</small></div>
+        <div><small>${monthLabel(last.billing_month,false)}</small><b>${num(last.kwh)} kWh</b><small>${peso(last.amount)}</small></div>
+        <div><small>Unpaid balance</small><b class="${unpaid>0?'bad':'ok'}">${peso(unpaid)}</b></div>
+      </div>`:`<p class="muted">No readings yet.</p>`}
+      <div class="row gap"><button class="btn" onclick="startAdd(${h.id})">➕ Add reading</button>
+        <button class="btn ghost" onclick="goHistory(${h.id})">📜 History</button></div>
+    </div>`;
+  }).join('');
+  return `<div class="card hero"><div><small class="muted">Rate per kWh</small><div class="big">${peso(S.settings.rate_per_kwh)}<span> /kWh</span></div>
+      <small class="muted">Total unpaid (all houses): <b class="${totalUnpaid>0?'bad':'ok'}">${peso(totalUnpaid)}</b></small></div>
+      <button class="btn ghost sm" onclick="setTab('settings')">Change</button></div>
+    ${S.houses.length ? cards : `<div class="card"><h3>Welcome! 👋</h3><p class="muted">First, go to <b>Settings</b> to set the rate and add the two houses.</p>
+      <button class="btn" onclick="setTab('settings')">Go to Settings</button></div>`}`;
+}
+
+/* ----- add / edit reading ----- */
+function viewAdd(){
+  if(!S.houses.length) return `<div class="card"><p>Add a house first in Settings.</p><button class="btn" onclick="setTab('settings')">Settings</button></div>`;
+  const r = editing, sel = r ? r.house_id : (preselectHouse || S.houses[0].id);
+  return `<div class="card"><h2>${r?'✏️ Edit reading':'➕ New reading'}</h2>
+    <form id="readForm" class="form">
+      <label>House<select name="house_id" ${r?'disabled':''}>${S.houses.map(h=>`<option value="${h.id}" ${h.id===sel?'selected':''}>${esc(h.name)}</option>`).join('')}</select></label>
+      <div class="two">
+        <label>Billing month (end month)<input type="month" name="month" required value="${r?r.billing_month.slice(0,7):thisMonth()}"><small id="periodHint" style="color:var(--volt)"></small></label>
+        <label>Date read<input type="date" name="reading_date" required value="${r?r.reading_date:today()}"></label>
+      </div>
+      <div class="two">
+        <label>Previous reading <small id="prevHint"></small><input type="number" step="0.01" min="0" inputmode="decimal" name="previous_reading" required value="${r?r.previous_reading:''}"></label>
+        <label>Current reading<input type="number" step="0.01" min="0" inputmode="decimal" name="current_reading" required value="${r?r.current_reading:''}"></label>
+      </div>
+      <label>Rate per kWh (₱)<input type="number" step="0.0001" min="0" inputmode="decimal" name="rate" required value="${r?r.rate:S.settings.rate_per_kwh}"></label>
+      <label>Notes (optional)<input name="notes" value="${esc(r?.notes||'')}" placeholder="e.g. meter replaced"></label>
+      <div class="calc" id="calc"></div>
+      <div class="row gap"><button class="btn big" type="submit" id="saveBtn">💾 Save reading</button>
+        ${r?`<button type="button" class="btn ghost" onclick="setTab('history')">Cancel</button>`:''}</div>
+    </form></div>`;
+}
+
+function bindAdd(){
+  const f=document.getElementById('readForm'); if(!f) return;
+  const calcEl=document.getElementById('calc'), hint=document.getElementById('prevHint');
+  const calc=()=>{
+    if(f.previous_reading.value===''||f.current_reading.value===''){ calcEl.innerHTML='<span class="muted">Type the readings to see the bill</span>'; return; }
+    const k=(+f.current_reading.value)-(+f.previous_reading.value), rt=+f.rate.value;
+    calcEl.innerHTML = k<0 ? '<span class="bad">⚠️ Current reading is lower than previous</span>'
+      : `${num(k)} kWh × ${peso(rt)}<br><b>${peso(k*rt)}</b>`;
+  };
+  const autoPrev=()=>{
+    const ph=document.getElementById('periodHint');
+    if(ph) ph.textContent = f.month.value ? monthLabel(f.month.value+'-01') : '';
+    if(editing) return calc();
+    const hid=+f.house_id.value, m=f.month.value+'-01';
+    const prev=S.readings.filter(r=>r.house_id===hid && r.billing_month<m)
+      .sort((a,b)=>b.billing_month.localeCompare(a.billing_month))[0];
+    if(prev){ f.previous_reading.value=prev.current_reading; hint.textContent=`(from ${shortMonth(prev.billing_month)})`; }
+    else { f.previous_reading.value=''; hint.textContent='(first time — type it)'; }
+    calc();
+  };
+  f.house_id.onchange=autoPrev; f.month.onchange=autoPrev; f.oninput=calc;
+  autoPrev();
+
+  f.onsubmit = async e=>{
+    e.preventDefault();
+    const payload = {
+      billing_month: f.month.value+'-01',
+      reading_date: f.reading_date.value,
+      previous_reading: +f.previous_reading.value,
+      current_reading: +f.current_reading.value,
+      rate: +f.rate.value,
+      notes: f.notes.value.trim() || null
+    };
+    if(payload.current_reading < payload.previous_reading) return toast('Current reading must not be lower than previous.','bad');
+    const btn=document.getElementById('saveBtn'); btn.disabled=true;
+    const res = editing
+      ? await sb.from('readings').update(payload).eq('id',editing.id)
+      : await sb.from('readings').insert({ ...payload, house_id:+f.house_id.value });
+    btn.disabled=false;
+    if(res.error) return toast(res.error.code==='23505' ? 'This house already has a reading for that month.' : res.error.message,'bad');
+    toast(editing?'Reading updated ✓':'Reading saved ✓');
+    histHouse = String(editing ? editing.house_id : +f.house_id.value);
+    editing=null; await loadData(); setTab('history');
+  };
+}
+function editReading(id){ editing=S.readings.find(r=>r.id===id); tab='add'; renderAdmin(); window.scrollTo(0,0); }
+
+/* ----- history ----- */
+function readingCard(r, admin){
+  const h=houseOf(r.house_id);
+  return `<div class="card reading">
+    <div class="row between"><div><b>${monthLabel(r.billing_month)}</b>${admin&&h?` · <span class="muted">${esc(h.name)}</span>`:''}
+      <br><small class="muted">Read on ${dateLabel(r.reading_date)}</small></div>${badge(r)}</div>
+    <div class="meter"><span>${num(r.previous_reading)}</span> → <span>${num(r.current_reading)}</span></div>
+    <div class="row between"><span class="muted">${num(r.kwh)} kWh × ${peso(r.rate)}</span><b class="amt">${peso(r.amount)}</b></div>
+    ${r.notes?`<small class="muted">📝 ${esc(r.notes)}</small>`:''}
+    <div class="row gap wrapf">
+      <button class="btn sm ghost" onclick="showSlip(${r.id})">🧾 Slip</button>
+      ${admin?`<button class="btn sm ${r.is_paid?'ghost':'ok'}" onclick="togglePaid(${r.id})">${r.is_paid?'↩ Mark unpaid':'✅ Mark paid'}</button>
+        <button class="btn sm ghost" onclick="editReading(${r.id})">✏️ Edit</button>
+        <button class="btn sm danger" onclick="delReading(${r.id})">🗑 Delete</button>`:''}
+    </div></div>`;
+}
+
+function chart(rs){
+  const data=rs.slice(0,12).reverse(); if(!data.length) return '';
+  const max=Math.max(...data.map(r=>+r.kwh),1);
+  return `<div class="card"><h3>📊 kWh used per month</h3><div class="bars">${data.map(r=>`<div class="bar">
+    <span class="v">${num(r.kwh,0)}</span><div class="b" style="height:${Math.max(3,(+r.kwh)/max*100)}%"></div>
+    <span class="l">${shortMonth(r.billing_month)}</span></div>`).join('')}</div></div>`;
+}
+
+function viewHistory(){
+  const list=S.readings.filter(r=>histHouse==='all'||r.house_id===+histHouse);
+  return `<div class="card"><div class="row between gap">
+      <select onchange="histHouse=this.value;renderAdmin()">
+        <option value="all">All houses</option>
+        ${S.houses.map(h=>`<option value="${h.id}" ${String(h.id)===histHouse?'selected':''}>${esc(h.name)}</option>`).join('')}
+      </select></div>
+      <p style="margin:.7rem 0 0">Unpaid: <b class="${unpaidOf(list)>0?'bad':'ok'}">${peso(unpaidOf(list))}</b> · ${list.length} reading(s)</p></div>
+    ${histHouse!=='all'?chart(list):''}
+    ${list.map(r=>readingCard(r,true)).join('') || '<div class="card muted">No readings yet.</div>'}`;
+}
+
+async function togglePaid(id){
+  const r=S.readings.find(x=>x.id===id);
+  const { error } = await sb.from('readings').update({ is_paid:!r.is_paid, paid_date: r.is_paid?null:today() }).eq('id',id);
+  if(error) return toast(error.message,'bad');
+  toast(r.is_paid?'Marked unpaid':'Marked paid ✓'); await loadData(); renderAdmin();
+}
+async function delReading(id){
+  const r=S.readings.find(x=>x.id===id);
+  if(!confirm(`Delete the ${monthLabel(r.billing_month)} reading of ${houseOf(r.house_id)?.name||'this house'}?`)) return;
+  const { error } = await sb.from('readings').delete().eq('id',id);
+  if(error) return toast(error.message,'bad');
+  toast('Deleted'); await loadData(); renderAdmin();
+}
+
+/* ----- billing slip (both admin and house) ----- */
+function showSlip(id){
+  const r=S.readings.find(x=>x.id===id), h=houseOf(r.house_id)||{};
+  const row=(a,b)=>`<div class="slip-row"><span>${a}</span><span>${b}</span></div>`;
+  openModal(`<div id="slip" class="slip">
+      <div class="slip-head">⚡ ${APP_NAME.toUpperCase()}<br><small>Electricity Billing Slip</small><br><small>${monthLabel(r.billing_month)}</small></div>
+      ${row('House',esc(h.name||''))}${h.owner_name?row('Name',esc(h.owner_name)):''}${h.meter_no?row('Meter no.',esc(h.meter_no)):''}
+      ${row('Billing period',monthLabel(r.billing_month,false))}${row('Date read',dateLabel(r.reading_date))}
+      ${row('Previous reading',num(r.previous_reading))}${row('Current reading',num(r.current_reading))}
+      ${row('kWh used',num(r.kwh))}${row('Rate / kWh',peso(r.rate))}
+      <div class="slip-row slip-total"><span>AMOUNT DUE</span><span>${peso(r.amount)}</span></div>
+      ${row('Status', r.is_paid?'PAID '+(r.paid_date?dateLabel(r.paid_date):''):'UNPAID')}
+      ${r.notes?row('Note',esc(r.notes)):''}
+      <div class="slip-foot">Thank you! 🙏</div>
+    </div>
+    <button class="btn" onclick="window.print()">🖨 Print</button>
+    <button class="btn ghost" onclick="closeModal()">Close</button>`);
+}
+
+/* ----- settings: rate, houses, accounts ----- */
+function viewSettings(){
+  const houseOpts = sel => `<option value="">— no house —</option>`+S.houses.map(h=>`<option value="${h.id}" ${h.id===sel?'selected':''}>${esc(h.name)}</option>`).join('');
+  return `
+  <div class="card"><h3>💡 Rate per kWh</h3>
+    <form id="rateForm" class="form">
+      <label>Fixed rate (₱ per kWh)<input type="number" step="0.0001" min="0" inputmode="decimal" name="rate" required value="${S.settings.rate_per_kwh}"></label>
+      <small class="muted">Changing the rate only affects NEW readings. Old bills keep their rate.</small>
+      <button class="btn">Save rate</button>
+    </form></div>
+
+  <div class="card"><div class="row between"><h3>🏠 Houses</h3><button class="btn sm" onclick="houseForm()">➕ Add house</button></div>
+    ${S.houses.map(h=>`<div class="list-item"><div><b>${esc(h.name)}</b><br><small class="muted">${esc(h.owner_name||'')}${h.meter_no?' · Meter '+esc(h.meter_no):''}</small></div>
+      <div class="row gap"><button class="btn sm ghost" onclick="houseForm(${h.id})">✏️</button><button class="btn sm danger" onclick="delHouse(${h.id})">🗑</button></div></div>`).join('')
+      || '<p class="muted">No houses yet.</p>'}
+  </div>
+
+  <div class="card"><h3>👥 Accounts</h3>
+    ${S.profiles.map(p=>`<div class="list-item"><div><b>${esc(p.full_name||p.username)}</b><br>
+        <small class="muted">@${esc(p.username)} · ${p.role==='admin'?'Admin':'House'}</small></div>
+      ${p.id===me.id?'<small class="muted">(you)</small>':`<select style="max-width:170px" onchange="linkHouse('${p.id}',this.value)">${houseOpts(p.house_id)}</select>`}</div>`).join('')}
+    <h3 style="margin-top:16px">➕ Create account</h3>
+    <form id="accForm" class="form">
+      <label>Full name<input name="full_name" required></label>
+      <div class="two">
+        <label>Username<input name="username" required autocapitalize="none" pattern="[a-zA-Z0-9._\\-]{3,20}" title="3–20 letters/numbers, no spaces"></label>
+        <label>Password<input name="password" type="text" minlength="6" required></label>
+      </div>
+      <div class="two">
+        <label>House<select name="house_id">${houseOpts(null)}</select></label>
+        <label>Type<select name="role"><option value="house">House (view only)</option><option value="admin">Admin (can edit)</option></select></label>
+      </div>
+      <button class="btn" id="accBtn">Create account</button>
+    </form></div>`;
+}
+
+function bindSettings(){
+  document.getElementById('rateForm').onsubmit = async e=>{
+    e.preventDefault();
+    const { error } = await sb.from('settings').update({ rate_per_kwh:+e.target.rate.value, updated_at:new Date().toISOString() }).eq('id',1);
+    if(error) return toast(error.message,'bad');
+    toast('Rate saved ✓'); await loadData(); renderAdmin();
+  };
+  document.getElementById('accForm').onsubmit = async e=>{
+    e.preventDefault();
+    const f=e.target, username=f.username.value.trim().toLowerCase(), full_name=f.full_name.value.trim();
+    const btn=document.getElementById('accBtn'); btn.disabled=true; btn.textContent='Creating…';
+    // separate client so Mama stays logged in while the new account is created
+    const tmp = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth:{ persistSession:false, autoRefreshToken:false, detectSessionInUrl:false, storageKey:'tmp-signup' } });
+    const { data, error } = await tmp.auth.signUp({ email:toEmail(username), password:f.password.value, options:{ data:{ username, full_name } } });
+    if(error || !data.user){ btn.disabled=false; btn.textContent='Create account'; return toast(error?.message.includes('registered')?'That username is already taken.':(error?.message||'Could not create account'),'bad'); }
+    const upd = await sb.from('profiles').update({ full_name, role:f.role.value, house_id: f.house_id.value?+f.house_id.value:null }).eq('id', data.user.id);
+    if(upd.error) toast(upd.error.message,'bad'); else toast(`Account @${username} created ✓`);
+    await loadData(); renderAdmin();
+  };
+}
+
+async function linkHouse(pid, hid){
+  const { error } = await sb.from('profiles').update({ house_id: hid?+hid:null }).eq('id',pid);
+  if(error) return toast(error.message,'bad');
+  toast('Account updated ✓'); await loadData();
+}
+
+function houseForm(id){
+  const h = id ? houseOf(id) : {};
+  openModal(`<h3>${id?'✏️ Edit house':'➕ Add house'}</h3>
+    <form id="houseF" class="form">
+      <label>House name<input name="name" required value="${esc(h.name||'')}" placeholder="e.g. Ernie's House"></label>
+      <label>Owner / name on slip<input name="owner_name" value="${esc(h.owner_name||'')}"></label>
+      <label>Submeter no. (optional)<input name="meter_no" value="${esc(h.meter_no||'')}"></label>
+      <button class="btn">💾 Save</button>
+    </form><button class="btn ghost" onclick="closeModal()">Cancel</button>`);
+  document.getElementById('houseF').onsubmit = async e=>{
+    e.preventDefault();
+    const f=e.target, payload={ name:f.name.value.trim(), owner_name:f.owner_name.value.trim()||null, meter_no:f.meter_no.value.trim()||null };
+    const { error } = id ? await sb.from('houses').update(payload).eq('id',id) : await sb.from('houses').insert(payload);
+    if(error) return toast(error.message,'bad');
+    closeModal(); toast('House saved ✓'); await loadData(); renderAdmin();
+  };
+}
+async function delHouse(id){
+  const h=houseOf(id), n=S.readings.filter(r=>r.house_id===id).length;
+  if(!confirm(`Delete "${h.name}"?${n?`\n\nThis also deletes its ${n} reading(s)!`:''}`)) return;
+  const { error } = await sb.from('houses').delete().eq('id',id);
+  if(error) return toast(error.message,'bad');
+  toast('House deleted'); await loadData(); renderAdmin();
+}
+
+/* =====================================================================
+   HOUSE ACCOUNT (view only)
+   ===================================================================== */
+function renderHouse(){
+  const h = houseOf(me.house_id);
+  if(!h){
+    app.innerHTML = shell(`<div class="card"><h3>⏳ Not linked yet</h3><p class="muted">Your account is not yet linked to a house. Please ask the admin to link it in Settings → Accounts.</p></div>`, me.full_name||me.username);
+    return;
+  }
+  const rs=S.readings, last=rs[0], unpaid=unpaidOf(rs);
+  app.innerHTML = shell(`
+    <div class="card billbig">
+      ${last?`<small class="muted">Latest bill · ${monthLabel(last.billing_month)}</small>
+        <div class="big">${peso(last.amount)}</div>
+        <div class="muted">${num(last.kwh)} kWh × ${peso(last.rate)}</div>
+        <div style="margin:10px 0">${badge(last)}</div>
+        <button class="btn" onclick="showSlip(${last.id})">🧾 View billing slip</button>`
+      :`<h3>No bills yet</h3><p class="muted">Readings will appear here once they are entered.</p>`}
+    </div>
+    <div class="card row between"><div><small class="muted">Total unpaid</small><div class="big ${unpaid>0?'bad':'ok'}" style="font-size:1.6rem">${peso(unpaid)}</div></div>
+      <div style="text-align:right"><small class="muted">Current rate</small><div><b>${peso(S.settings.rate_per_kwh)}</b> /kWh</div></div></div>
+    ${chart(rs)}
+    <h3 style="margin:18px 4px 10px">📜 Bill history</h3>
+    ${rs.map(r=>readingCard(r,false)).join('') || '<div class="card muted">No readings yet.</div>'}
+  `, '🏠 '+h.name);
+}
+
+if(sb) sb.auth.onAuthStateChange(ev=>{ if(ev==='SIGNED_OUT' && me){ me=null; renderLogin(); } });
+boot();
+</script>
+</body>
+</html>
