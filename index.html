@@ -355,6 +355,7 @@ function openAccountMenu(){
     </form>
     ${isStandalone()?'':'<button class="btn" onclick="installApp()">📲 Install TundraVolt app</button>'}
     <button class="btn ghost" onclick="closeModal();enableNotifications()">🔔 Turn on notifications</button>
+    <button class="btn ghost" onclick="keepAwake()">⚡ Keep server awake</button>
     <button class="btn ghost" onclick="refreshAll()">🔄 Refresh data</button>
     <button class="btn danger" onclick="logout()">🚪 Log out</button>
     <button class="btn ghost" onclick="closeModal()">Close</button>`);
@@ -364,6 +365,13 @@ function openAccountMenu(){
     if(error) return toast(error.message,'bad');
     closeModal(); toast('Password changed ✓');
   };
+}
+async function keepAwake(){
+  closeModal();
+  const t=performance.now();
+  const { error } = await sb.from('settings').select('id').limit(1);
+  if(error) return toast('Server did not answer. It may be paused, open Supabase and click Restore.','bad');
+  toast(`⚡ Server is awake (${Math.round(performance.now()-t)} ms)`);
 }
 async function refreshAll(){ closeModal(); await loadData(); me.role==='admin'?renderAdmin():renderHouse(); toast('Updated ✓'); }
 
