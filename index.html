@@ -53,7 +53,9 @@ small{font-size:.8rem} .muted{color:var(--muted)} .ok{color:var(--ok)} .bad{colo
 input,select{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;
   padding:12px;font-size:1rem}
 input:focus,select:focus{outline:2px solid var(--volt);border-color:transparent}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.two>*,.two input,.two select{min-width:0}
+input[type=date],input[type=month]{min-width:0;max-width:100%}
 .calc{background:var(--card2);border:1px dashed var(--volt);border-radius:12px;padding:14px;text-align:center;font-size:1.05rem}
 .calc b{color:var(--volt);font-size:1.4rem}
 
