@@ -131,6 +131,7 @@ input[type=date],input[type=month]{min-width:0;max-width:100%}
 @keyframes sfillbar{to{width:100%}}
 #splash.flash{animation:sflash .3s}
 @keyframes sflash{40%{background:#3a3210}}
+#splash .scredit{position:absolute;bottom:calc(22px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;color:var(--muted);font-size:.75rem}
 #splash .sn{font-size:1.5rem;font-weight:800;margin-top:14px;letter-spacing:.04em}
 .notif-card{border-color:#4a3d12;background:linear-gradient(135deg,#1f2a45,#2b2410)}
 @media (max-width:480px){ .stats{grid-template-columns:1fr 1fr} .stats>div:last-child{grid-column:span 2} }
@@ -147,6 +148,7 @@ input[type=date],input[type=month]{min-width:0;max-width:100%}
   <div class="sbar"><i></i></div>
   <div class="sn">TundraVolt</div>
   <small class="muted" id="sst">Charging…</small>
+  <small class="scredit" id="scredit">Developed by Ernie Jhun Tundaan</small>
 </div>
 <div id="app"></div>
 <div id="modal" class="modal hidden" onclick="if(event.target===this)closeModal()"><div class="modal-box" id="modalBox"></div></div>
@@ -166,6 +168,7 @@ const VAPID_PUBLIC_KEY  = "BKbaGfrkY8GZtl-mTUk3yjBQ4L1mMXx-J1bh579wO1iEj720AGmM7
 
 /* ---------- splash: 0V → 220V in about 1.5 s ---------- */
 (function splash(){
+  document.getElementById('scredit').textContent=CREDIT;
   const el=document.getElementById('splash'), v=document.getElementById('sv'), st=document.getElementById('sst'), t0=performance.now();
   (function tick(t){ const p=Math.min(1,(t-t0-100)/1050); if(p>0) v.textContent=Math.round(220*p)+'V';
     if(p<1) requestAnimationFrame(tick); else { st.textContent='Fully charged'; el.classList.add('flash'); } })(t0);
